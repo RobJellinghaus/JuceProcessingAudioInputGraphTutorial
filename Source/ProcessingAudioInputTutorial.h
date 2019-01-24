@@ -63,12 +63,12 @@ public:
 
         setSize (800, 100);
 
-		// we deliberately don't call this
+        // we deliberately don't call this
         //setAudioChannels (2, 2);
 
-		// instead we call prepareToPlay directly
-		// the parameters are actually ignored
-		prepareToPlay(0, 0);
+        // instead we call prepareToPlay directly
+        // the parameters are actually ignored
+        prepareToPlay(0, 0);
     }
 
     ~MainContentComponent()
@@ -76,109 +76,109 @@ public:
         //shutdownAudio();
     }
 
-	// Set the buffer size of the current device to the minimum supported size
-	void setBufferSizeToMinimum()
-	{
-		// Set buffer size to minimum available on current device
-		auto* device = deviceManager.getCurrentAudioDevice();
+    // Set the buffer size of the current device to the minimum supported size
+    void setBufferSizeToMinimum()
+    {
+        // Set buffer size to minimum available on current device
+        auto* device = deviceManager.getCurrentAudioDevice();
 
-		auto bufferRate = device->getCurrentSampleRate();
-		auto bufferSize = device->getCurrentBufferSizeSamples();
+        auto bufferRate = device->getCurrentSampleRate();
+        auto bufferSize = device->getCurrentBufferSizeSamples();
 
-		const bool setMinBufferSize = true;
-		if (setMinBufferSize)
-		{
-			auto bufferSizes = device->getAvailableBufferSizes();
-			AudioDeviceManager::AudioDeviceSetup setup;
-			deviceManager.getAudioDeviceSetup(setup);
-			setup.bufferSize = bufferSizes[0];
-			deviceManager.setAudioDeviceSetup(setup, false);
+        const bool setMinBufferSize = true;
+        if (setMinBufferSize)
+        {
+            auto bufferSizes = device->getAvailableBufferSizes();
+            AudioDeviceManager::AudioDeviceSetup setup;
+            deviceManager.getAudioDeviceSetup(setup);
+            setup.bufferSize = bufferSizes[0];
+            deviceManager.setAudioDeviceSetup(setup, false);
 
-			if (bufferSizes[0] != device->getCurrentBufferSizeSamples())
-			{
-				// die horribly
-				throw "Can't set buffer size to minimum";
-			}
-		}
-	}
+            if (bufferSizes[0] != device->getCurrentBufferSizeSamples())
+            {
+                // die horribly
+                throw "Can't set buffer size to minimum";
+            }
+        }
+    }
 
-	// Append the source string to the target
-	static void AppendToString(String& target, const wchar_t* source)
-	{
-		String sourceString{ source };
-		AppendToString(target, sourceString);
-	}
+    // Append the source string to the target
+    static void AppendToString(String& target, const wchar_t* source)
+    {
+        String sourceString{ source };
+        AppendToString(target, sourceString);
+    }
 
-	// Append the source string to the target
-	static void AppendToString(String& target, const String& sourceString)
-	{
-		target.append(sourceString, sourceString.length());
-	}
+    // Append the source string to the target
+    static void AppendToString(String& target, const String& sourceString)
+    {
+        target.append(sourceString, sourceString.length());
+    }
 
-	// Prepare to play
-	// In the original sample code, this method is called (re-entrantly, it turns out) from
-	// the MainContentComponent() constructor via the setChannels(2, 2) call.
-	void prepareToPlay(int, double) override
-	{
-		player.setProcessor(&graph);
-		deviceManager.addAudioCallback(&player);
+    // Prepare to play
+    // In the original sample code, this method is called (re-entrantly, it turns out) from
+    // the MainContentComponent() constructor via the setChannels(2, 2) call.
+    void prepareToPlay(int, double) override
+    {
+        player.setProcessor(&graph);
+        deviceManager.addAudioCallback(&player);
 
-		deviceManager.initialiseWithDefaultDevices(2, 2);
+        deviceManager.initialiseWithDefaultDevices(2, 2);
 
-		setBufferSizeToMinimum();
+        setBufferSizeToMinimum();
 
-		AudioIODevice* device = deviceManager.getCurrentAudioDevice();
+        AudioIODevice* device = deviceManager.getCurrentAudioDevice();
 
-		BigInteger activeInputChannels = device->getActiveInputChannels();
-		BigInteger activeOutputChannels = device->getActiveOutputChannels();
+        BigInteger activeInputChannels = device->getActiveInputChannels();
+        BigInteger activeOutputChannels = device->getActiveOutputChannels();
 
-		int maxInputChannels = activeInputChannels.getHighestBit() + 1;
-		int maxOutputChannels = activeOutputChannels.getHighestBit() + 1;
-		double bufferRate = device->getCurrentSampleRate();
-		int bufferSize = device->getCurrentBufferSizeSamples();
+        int maxInputChannels = activeInputChannels.getHighestBit() + 1;
+        int maxOutputChannels = activeOutputChannels.getHighestBit() + 1;
+        double bufferRate = device->getCurrentSampleRate();
+        int bufferSize = device->getCurrentBufferSizeSamples();
 
-		String label;
-		AppendToString(label, L"Noise level: (buffer rate ");
-		AppendToString(label, String(bufferRate));
-		AppendToString(label, L", buffer size ");
-		AppendToString(label, String(bufferSize));
-		levelLabel.setText(label, NotificationType::dontSendNotification);
+        String label;
+        AppendToString(label, L"Noise level: (buffer rate ");
+        AppendToString(label, String(bufferRate));
+        AppendToString(label, L", buffer size ");
+        AppendToString(label, String(bufferSize));
+        levelLabel.setText(label, NotificationType::dontSendNotification);
 
-		graph.setPlayConfigDetails(
-			maxInputChannels,
-			maxOutputChannels,
-			device->getCurrentSampleRate(),
-			device->getCurrentBufferSizeSamples());
+        graph.setPlayConfigDetails(
+            maxInputChannels,
+            maxOutputChannels,
+            device->getCurrentSampleRate(),
+            device->getCurrentBufferSizeSamples());
 
-		if (activeInputChannels != activeOutputChannels)
-		{
-			throw "Don't yet support different numbers of input vs output channels";
-		}
+        if (activeInputChannels != activeOutputChannels)
+        {
+            throw "Don't yet support different numbers of input vs output channels";
+        }
 
-		// TBD: is double better?  Single (e.g. float32) definitely best for starters though
-		graph.setProcessingPrecision(AudioProcessor::singlePrecision);
+        // TBD: is double better?  Single (e.g. float32) definitely best for starters though
+        graph.setProcessingPrecision(AudioProcessor::singlePrecision);
 
-		graph.prepareToPlay(device->getCurrentSampleRate(), device->getCurrentBufferSizeSamples());
+        graph.prepareToPlay(device->getCurrentSampleRate(), device->getCurrentBufferSizeSamples());
 
-		AudioProcessorGraph::AudioGraphIOProcessor* input =
-			new AudioProcessorGraph::AudioGraphIOProcessor(
-				AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode);
+        AudioProcessorGraph::AudioGraphIOProcessor* input =
+            new AudioProcessorGraph::AudioGraphIOProcessor(
+                AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode);
 
-		AudioProcessorGraph::AudioGraphIOProcessor* output =
-			new AudioProcessorGraph::AudioGraphIOProcessor(
-				AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode);
+        AudioProcessorGraph::AudioGraphIOProcessor* output =
+            new AudioProcessorGraph::AudioGraphIOProcessor(
+                AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode);
 
-		//mOsc1Node = new OscillatorNode();
-		//mOsc1Node->setPlayConfigDetails(getNumInputChannels(), getNumOutputChannels(), sampleRate, samplesPerBlock);
+        //mOsc1Node = new OscillatorNode();
+        //mOsc1Node->setPlayConfigDetails(getNumInputChannels(), getNumOutputChannels(), sampleRate, samplesPerBlock);
 
-		AudioProcessorGraph::Node::Ptr inputNodePtr = graph.addNode(input);
-		AudioProcessorGraph::Node::Ptr outputNodePtr = graph.addNode(output);
+        AudioProcessorGraph::Node::Ptr inputNodePtr = graph.addNode(input);
+        AudioProcessorGraph::Node::Ptr outputNodePtr = graph.addNode(output);
 
-		for (int i = 0; i < maxInputChannels; i++)
-		{
-			graph.addConnection({ { inputNodePtr->nodeID, i }, { outputNodePtr->nodeID, i } });
-		}
-	}
+        for (int i = 0; i < maxInputChannels; i++)
+        {
+            graph.addConnection({ { inputNodePtr->nodeID, i }, { outputNodePtr->nodeID, i } });
+        }
+    }
 
     void getNextAudioBlock (const AudioSourceChannelInfo& bufferToFill) override
     {
@@ -187,8 +187,8 @@ public:
 
         auto* device = deviceManager.getCurrentAudioDevice();
 
-		auto bufferRate = device->getCurrentSampleRate();
-		auto bufferSize = device->getCurrentBufferSizeSamples();
+        auto bufferRate = device->getCurrentSampleRate();
+        auto bufferSize = device->getCurrentBufferSizeSamples();
 
         auto activeInputChannels  = device->getActiveInputChannels();
         auto activeOutputChannels = device->getActiveOutputChannels();
@@ -217,16 +217,16 @@ public:
                                                                           bufferToFill.startSample);
                     auto* outBuffer = bufferToFill.buffer->getWritePointer (channel, bufferToFill.startSample);
 
-					for (auto sample = 0; sample < bufferToFill.numSamples; ++sample)
-						outBuffer[sample] = inBuffer[sample]; // * random.nextFloat() * level;
+                    for (auto sample = 0; sample < bufferToFill.numSamples; ++sample)
+                        outBuffer[sample] = inBuffer[sample]; // * random.nextFloat() * level;
                 }
             }
         }
 
 #else
 
-		// we expect AudioProcessorPlayer to be handling the device callback
-		// and in fact we don't expect this method to be called at all...?
+        // we expect AudioProcessorPlayer to be handling the device callback
+        // and in fact we don't expect this method to be called at all...?
 
 #endif
 
@@ -236,7 +236,7 @@ public:
 
     void resized() override
     {
-		const int width = 300;
+        const int width = 300;
         levelLabel .setBounds (10, 10, width - 10, 20);
         levelSlider.setBounds (100, 10, getWidth() - (width + 10), 20);
     }
@@ -246,8 +246,8 @@ private:
     Slider levelSlider;
     Label levelLabel;
 
-	AudioProcessorGraph graph;
-	AudioProcessorPlayer player;
+    AudioProcessorGraph graph;
+    AudioProcessorPlayer player;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainContentComponent)
 };
