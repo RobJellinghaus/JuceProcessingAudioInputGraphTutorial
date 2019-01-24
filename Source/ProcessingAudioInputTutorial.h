@@ -62,14 +62,21 @@ public:
         addAndMakeVisible (levelLabel);
 
         setSize (800, 100);
-        setAudioChannels (2, 2);
+
+		// we deliberately don't call this
+        //setAudioChannels (2, 2);
+
+		// instead we call prepareToPlay directly
+		// the parameters are actually ignored
+		prepareToPlay(0, 0);
     }
 
     ~MainContentComponent()
     {
-        shutdownAudio();
+        //shutdownAudio();
     }
 
+	// Set the buffer size of the current device to the minimum supported size
 	void setBufferSizeToMinimum()
 	{
 		// Set buffer size to minimum available on current device
@@ -95,19 +102,29 @@ public:
 		}
 	}
 
+	// Append the source string to the target
 	static void AppendToString(String& target, const wchar_t* source)
 	{
 		String sourceString{ source };
 		AppendToString(target, sourceString);
 	}
 
+	// Append the source string to the target
 	static void AppendToString(String& target, const String& sourceString)
 	{
 		target.append(sourceString, sourceString.length());
 	}
 
+	// Prepare to play
+	// In the original sample code, this method is called (re-entrantly, it turns out) from
+	// the MainContentComponent() constructor via the setChannels(2, 2) call.
 	void prepareToPlay(int, double) override
 	{
+		player.setProcessor(&graph);
+		deviceManager.addAudioCallback(&player);
+
+		deviceManager.initialiseWithDefaultDevices(2, 2);
+
 		setBufferSizeToMinimum();
 
 		AudioIODevice* device = deviceManager.getCurrentAudioDevice();
@@ -208,8 +225,8 @@ public:
 
 #else
 
-		MidiBuffer empty;
-		graph.processBlock(*bufferToFill.buffer, empty);
+		// we expect AudioProcessorPlayer to be handling the device callback
+		// and in fact we don't expect this method to be called at all...?
 
 #endif
 
@@ -229,7 +246,8 @@ private:
     Slider levelSlider;
     Label levelLabel;
 
-	juce::AudioProcessorGraph graph;
+	AudioProcessorGraph graph;
+	AudioProcessorPlayer player;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainContentComponent)
 };
