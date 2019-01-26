@@ -70,23 +70,23 @@
 #endif
 
 #ifndef    JUCE_ASIO
- //#define JUCE_ASIO 0
+#define JUCE_ASIO 0
 #endif
 
 #ifndef    JUCE_WASAPI
- //#define JUCE_WASAPI 1
+#define JUCE_WASAPI 1
 #endif
 
 #ifndef    JUCE_WASAPI_EXCLUSIVE
- //#define JUCE_WASAPI_EXCLUSIVE 0
+#define JUCE_WASAPI_EXCLUSIVE 1
 #endif
 
 #ifndef    JUCE_DIRECTSOUND
- //#define JUCE_DIRECTSOUND 1
+ //#define JUCE_DIRECTSOUND 0
 #endif
 
 #ifndef    JUCE_ALSA
- //#define JUCE_ALSA 1
+ //#define JUCE_ALSA 0
 #endif
 
 #ifndef    JUCE_JACK
@@ -106,18 +106,18 @@
 #endif
 
 #ifndef    JUCE_DISABLE_AUDIO_MIXING_WITH_OTHER_APPS
- //#define JUCE_DISABLE_AUDIO_MIXING_WITH_OTHER_APPS 0
+ //#define JUCE_DISABLE_AUDIO_MIXING_WITH_OTHER_APPS 1
 #endif
 
 //==============================================================================
 // juce_audio_formats flags:
 
 #ifndef    JUCE_USE_FLAC
- //#define JUCE_USE_FLAC 1
+ //#define JUCE_USE_FLAC 0
 #endif
 
 #ifndef    JUCE_USE_OGGVORBIS
- //#define JUCE_USE_OGGVORBIS 1
+ //#define JUCE_USE_OGGVORBIS 0
 #endif
 
 #ifndef    JUCE_USE_MP3AUDIOFORMAT

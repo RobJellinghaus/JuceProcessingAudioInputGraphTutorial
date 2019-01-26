@@ -56,10 +56,11 @@ public:
     {
         levelSlider.setRange (0.0, 0.25);
         levelSlider.setTextBoxStyle (Slider::TextBoxRight, false, 50, 20);
-        levelLabel.setText ("Noise Level (.........................)", dontSendNotification);
+        levelLabel.setText ("Noise Level", dontSendNotification);
 
         addAndMakeVisible (levelSlider);
-        addAndMakeVisible (levelLabel);
+        addAndMakeVisible(levelLabel);
+        addAndMakeVisible(infoLabel);
 
         setSize (800, 100);
 
@@ -120,10 +121,33 @@ public:
     // the MainContentComponent() constructor via the setChannels(2, 2) call.
     void prepareToPlay(int, double) override
     {
+        const OwnedArray<AudioIODeviceType>& deviceTypes = deviceManager.getAvailableDeviceTypes();
+        String exclusiveTypeName{L""};
+        String exclusive = L"Exclusive";
+        for (int i = 0; i < deviceTypes.size(); i++)
+        {
+            AudioIODeviceType* type = deviceTypes[i];
+            String typeName = type->getTypeName();
+
+            if (typeName.contains(exclusive))
+            {
+                exclusiveTypeName = exclusive;
+            }
+        }
+
+        if (exclusiveTypeName.length() > 0)
+        {
+            deviceManager.setCurrentAudioDeviceType(exclusiveTypeName, /*treatAsChosenDevice*/ false);
+        }
+
         player.setProcessor(&graph);
         deviceManager.addAudioCallback(&player);
 
-        deviceManager.initialiseWithDefaultDevices(2, 2);
+        String result = deviceManager.initialiseWithDefaultDevices(2, 2);
+        if (result.length() > 0)
+        {
+            throw result;
+        }
 
         setBufferSizeToMinimum();
 
@@ -138,11 +162,13 @@ public:
         int bufferSize = device->getCurrentBufferSizeSamples();
 
         String label;
-        AppendToString(label, L"Noise level: (buffer rate ");
+        AppendToString(label, L"Buffer rate ");
         AppendToString(label, String(bufferRate));
         AppendToString(label, L", buffer size ");
         AppendToString(label, String(bufferSize));
-        levelLabel.setText(label, NotificationType::dontSendNotification);
+        AppendToString(label, L", device type ");
+        AppendToString(label, device->getTypeName());
+        infoLabel.setText(label, NotificationType::dontSendNotification);
 
         graph.setPlayConfigDetails(
             maxInputChannels,
@@ -183,68 +209,27 @@ public:
     void getNextAudioBlock (const AudioSourceChannelInfo& bufferToFill) override
     {
 
-#if USE_DIRECT_AUDIO_COPY // original tutorial code that doesn't use AudioProcessorGraph
-
-        auto* device = deviceManager.getCurrentAudioDevice();
-
-        auto bufferRate = device->getCurrentSampleRate();
-        auto bufferSize = device->getCurrentBufferSizeSamples();
-
-        auto activeInputChannels  = device->getActiveInputChannels();
-        auto activeOutputChannels = device->getActiveOutputChannels();
-        auto maxInputChannels  = activeInputChannels .getHighestBit() + 1;
-        auto maxOutputChannels = activeOutputChannels.getHighestBit() + 1;
-
-        auto level = (float) levelSlider.getValue();
-
-        for (auto channel = 0; channel < maxOutputChannels; ++channel)
-        {
-            if ((! activeOutputChannels[channel]) || maxInputChannels == 0)
-            {
-                bufferToFill.buffer->clear (channel, bufferToFill.startSample, bufferToFill.numSamples);
-            }
-            else
-            {
-                auto actualInputChannel = channel % maxInputChannels; // [1]
-
-                if (! activeInputChannels[channel]) // [2]
-                {
-                    bufferToFill.buffer->clear (channel, bufferToFill.startSample, bufferToFill.numSamples);
-                }
-                else // [3]
-                {
-                    auto* inBuffer = bufferToFill.buffer->getReadPointer (actualInputChannel,
-                                                                          bufferToFill.startSample);
-                    auto* outBuffer = bufferToFill.buffer->getWritePointer (channel, bufferToFill.startSample);
-
-                    for (auto sample = 0; sample < bufferToFill.numSamples; ++sample)
-                        outBuffer[sample] = inBuffer[sample]; // * random.nextFloat() * level;
-                }
-            }
-        }
-
-#else
-
         // we expect AudioProcessorPlayer to be handling the device callback
-        // and in fact we don't expect this method to be called at all...?
-
-#endif
-
+        // and in fact we don't expect this method to be called at all.
     }
 
     void releaseResources() override {}
 
     void resized() override
     {
-        const int width = 300;
-        levelLabel .setBounds (10, 10, width - 10, 20);
+        const int width = 100;
+
+        levelLabel.setBounds(10, 10, width - 10, 20);
         levelSlider.setBounds (100, 10, getWidth() - (width + 10), 20);
+
+        infoLabel.setBounds(10, 30, getWidth(), 20);
     }
 
 private:
     Random random;
     Slider levelSlider;
     Label levelLabel;
+    Label infoLabel;
 
     AudioProcessorGraph graph;
     AudioProcessorPlayer player;
