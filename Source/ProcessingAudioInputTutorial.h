@@ -98,7 +98,7 @@ public:
             if (bufferSizes[0] != device->getCurrentBufferSizeSamples())
             {
                 // die horribly
-                throw "Can't set buffer size to minimum";
+                throw std::exception("Can't set buffer size to minimum");
             }
         }
     }
@@ -122,22 +122,22 @@ public:
     void prepareToPlay(int, double) override
     {
         const OwnedArray<AudioIODeviceType>& deviceTypes = deviceManager.getAvailableDeviceTypes();
-        String exclusiveTypeName{L""};
-        String exclusive = L"Exclusive";
+        String desiredTypeName{L""};
+        String desiredTypeSubstring = L"Exclusive";
         for (int i = 0; i < deviceTypes.size(); i++)
         {
             AudioIODeviceType* type = deviceTypes[i];
             String typeName = type->getTypeName();
 
-            if (typeName.contains(exclusive))
+            if (typeName.contains(desiredTypeSubstring))
             {
-                exclusiveTypeName = exclusive;
+                desiredTypeName = typeName;
             }
         }
 
-        if (exclusiveTypeName.length() > 0)
+        if (desiredTypeName.length() > 0)
         {
-            deviceManager.setCurrentAudioDeviceType(exclusiveTypeName, /*treatAsChosenDevice*/ false);
+            deviceManager.setCurrentAudioDeviceType(desiredTypeName, /*treatAsChosenDevice*/ false);
         }
 
         player.setProcessor(&graph);
@@ -146,7 +146,7 @@ public:
         String result = deviceManager.initialiseWithDefaultDevices(2, 2);
         if (result.length() > 0)
         {
-            throw result;
+            throw std::exception(result.getCharPointer());
         }
 
         setBufferSizeToMinimum();
@@ -161,6 +161,13 @@ public:
         double bufferRate = device->getCurrentSampleRate();
         int bufferSize = device->getCurrentBufferSizeSamples();
 
+        /*
+        if (maxInputChannels != maxOutputChannels)
+        {
+            throw std::exception("Don't yet support different numbers of input vs output channels");
+        }
+        */
+
         String label;
         AppendToString(label, L"Buffer rate ");
         AppendToString(label, String(bufferRate));
@@ -168,6 +175,10 @@ public:
         AppendToString(label, String(bufferSize));
         AppendToString(label, L", device type ");
         AppendToString(label, device->getTypeName());
+        AppendToString(label, L", maxin ");
+        AppendToString(label, String(maxInputChannels));
+        AppendToString(label, L", maxout ");
+        AppendToString(label, String(maxOutputChannels));
         infoLabel.setText(label, NotificationType::dontSendNotification);
 
         graph.setPlayConfigDetails(
@@ -175,11 +186,6 @@ public:
             maxOutputChannels,
             device->getCurrentSampleRate(),
             device->getCurrentBufferSizeSamples());
-
-        if (activeInputChannels != activeOutputChannels)
-        {
-            throw "Don't yet support different numbers of input vs output channels";
-        }
 
         // TBD: is double better?  Single (e.g. float32) definitely best for starters though
         graph.setProcessingPrecision(AudioProcessor::singlePrecision);
@@ -206,14 +212,16 @@ public:
         }
     }
 
-    void getNextAudioBlock (const AudioSourceChannelInfo& bufferToFill) override
+    void getNextAudioBlock(const juce::AudioSourceChannelInfo &) override
     {
-
-        // we expect AudioProcessorPlayer to be handling the device callback
-        // and in fact we don't expect this method to be called at all.
+        throw std::exception("This method should never be called since the AudioProcessorPlayer should be the callback");
     }
 
-    void releaseResources() override {}
+    void releaseResources() override
+    {
+        player.setProcessor(nullptr);
+        graph.clear();
+    }
 
     void resized() override
     {
