@@ -122,14 +122,17 @@ public:
     void prepareToPlay(int, double) override
     {
         const OwnedArray<AudioIODeviceType>& deviceTypes = deviceManager.getAvailableDeviceTypes();
+        // if true, matchString will be considered a substring; if false, an exact match
+        bool isSubstring = true;
         String desiredTypeName{L""};
-        String desiredTypeSubstring = L"Exclusive";
+        String matchString = L"Exclusive";
         for (int i = 0; i < deviceTypes.size(); i++)
         {
             AudioIODeviceType* type = deviceTypes[i];
             String typeName = type->getTypeName();
 
-            if (typeName.contains(desiredTypeSubstring))
+            bool isMatch = isSubstring ? typeName.contains(matchString) : typeName == matchString;
+            if (isMatch)
             {
                 desiredTypeName = typeName;
             }
@@ -161,12 +164,10 @@ public:
         double bufferRate = device->getCurrentSampleRate();
         int bufferSize = device->getCurrentBufferSizeSamples();
 
-        /*
         if (maxInputChannels != maxOutputChannels)
         {
             throw std::exception("Don't yet support different numbers of input vs output channels");
         }
-        */
 
         String label;
         AppendToString(label, L"Buffer rate ");
