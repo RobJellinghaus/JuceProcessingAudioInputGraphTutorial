@@ -90,12 +90,18 @@ public:
         if (setMinBufferSize)
         {
             auto bufferSizes = device->getAvailableBufferSizes();
+            int minBufferSize = bufferSizes[0];
+
             AudioDeviceManager::AudioDeviceSetup setup;
             deviceManager.getAudioDeviceSetup(setup);
-            setup.bufferSize = bufferSizes[0];
-            deviceManager.setAudioDeviceSetup(setup, false);
 
-            if (bufferSizes[0] != device->getCurrentBufferSizeSamples())
+            if (setup.bufferSize < minBufferSize)
+            {
+                setup.bufferSize = bufferSizes[0];
+                deviceManager.setAudioDeviceSetup(setup, false);
+            }
+
+            if (minBufferSize != device->getCurrentBufferSizeSamples())
             {
                 // die horribly
                 throw std::exception("Can't set buffer size to minimum");
@@ -127,8 +133,8 @@ public:
         // "Exclusive" substring for WASAPI exclusive mode
         // "ASIO" substring for Asio
         // "Windows Audio" non-substring) for WASAPI shared mode
-        String matchString = L"Windows Audio";
-        bool isSubstring = false;
+        String matchString = L"ASIO";
+        bool isSubstring = true;
         for (int i = 0; i < deviceTypes.size(); i++)
         {
             AudioIODeviceType* type = deviceTypes[i];
@@ -144,20 +150,46 @@ public:
         if (desiredTypeName.length() > 0)
         {
             deviceManager.setCurrentAudioDeviceType(desiredTypeName, /*treatAsChosenDevice*/ false);
-        }
 
-        player.setProcessor(&graph);
-        deviceManager.addAudioCallback(&player);
+#if INITIALISE_BORKED
+            // This code seems to run but completely fails to leave the system in a state with ASIO
+            // input channels defined!
+            String result = deviceManager.initialise(
+                /*numInputChannelsNeeded*/ 2,
+                /*numOutputChannelsNeeded*/ 2,
+                /*savedState*/ nullptr,
+                /*selectDefaultDeviceOnFailure*/ false,
+                /*preferredDefaultDeviceName*/ String(),
+                /*preferredSetupOptions*/ nullptr);
+
+            if (result.length() > 0)
+            {
+                throw std::exception(result.getCharPointer());
+            }
+#endif
+        }
+        else
+        {
+            throw std::exception("Could not set audio device type to desired type name");
+        }
 
         String result = deviceManager.initialiseWithDefaultDevices(2, 2);
         if (result.length() > 0)
         {
             throw std::exception(result.getCharPointer());
         }
+        
+        player.setProcessor(&graph);
+        deviceManager.addAudioCallback(&player);
 
         setBufferSizeToMinimum();
 
         AudioIODevice* device = deviceManager.getCurrentAudioDevice();
+
+        if (device->getTypeName() != desiredTypeName)
+        {
+            throw std::exception("Device type names don't match");
+        }
 
         BigInteger activeInputChannels = device->getActiveInputChannels();
         BigInteger activeOutputChannels = device->getActiveOutputChannels();
