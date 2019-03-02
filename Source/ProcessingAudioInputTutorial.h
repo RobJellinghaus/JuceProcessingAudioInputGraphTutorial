@@ -95,10 +95,14 @@ public:
             AudioDeviceManager::AudioDeviceSetup setup;
             deviceManager.getAudioDeviceSetup(setup);
 
-            if (setup.bufferSize < minBufferSize)
+            if (setup.bufferSize > minBufferSize)
             {
-                setup.bufferSize = bufferSizes[0];
-                deviceManager.setAudioDeviceSetup(setup, false);
+                setup.bufferSize = minBufferSize;
+                String result = deviceManager.setAudioDeviceSetup(setup, false);
+                if (result.length() > 0)
+                {
+                    throw std::exception(result.getCharPointer());
+                }
             }
 
             if (minBufferSize != device->getCurrentBufferSizeSamples())
@@ -150,23 +154,6 @@ public:
         if (desiredTypeName.length() > 0)
         {
             deviceManager.setCurrentAudioDeviceType(desiredTypeName, /*treatAsChosenDevice*/ false);
-
-#if INITIALISE_BORKED
-            // This code seems to run but completely fails to leave the system in a state with ASIO
-            // input channels defined!
-            String result = deviceManager.initialise(
-                /*numInputChannelsNeeded*/ 2,
-                /*numOutputChannelsNeeded*/ 2,
-                /*savedState*/ nullptr,
-                /*selectDefaultDeviceOnFailure*/ false,
-                /*preferredDefaultDeviceName*/ String(),
-                /*preferredSetupOptions*/ nullptr);
-
-            if (result.length() > 0)
-            {
-                throw std::exception(result.getCharPointer());
-            }
-#endif
         }
         else
         {
