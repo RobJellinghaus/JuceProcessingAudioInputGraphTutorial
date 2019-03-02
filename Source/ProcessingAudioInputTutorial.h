@@ -123,9 +123,12 @@ public:
     {
         const OwnedArray<AudioIODeviceType>& deviceTypes = deviceManager.getAvailableDeviceTypes();
         // if true, matchString will be considered a substring; if false, an exact match
-        bool isSubstring = true;
         String desiredTypeName{L""};
-        String matchString = L"Exclusive";
+        // "Exclusive" substring for WASAPI exclusive mode
+        // "ASIO" substring for Asio
+        // "Windows Audio" non-substring) for WASAPI shared mode
+        String matchString = L"Windows Audio";
+        bool isSubstring = false;
         for (int i = 0; i < deviceTypes.size(); i++)
         {
             AudioIODeviceType* type = deviceTypes[i];
